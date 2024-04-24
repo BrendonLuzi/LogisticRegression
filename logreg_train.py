@@ -1,3 +1,4 @@
+import sys
 import pickle
 import numpy as np
 import pandas as pd
@@ -35,6 +36,10 @@ def main():
 	# Save the model
 	with open('model.pkl', 'wb') as file:
 		pickle.dump(model, file)
+
+	# If the function is called as --visual, display the loss/epoch graph
+	if len(sys.argv) > 1 and sys.argv[1] == '--visual':
+		model.visualize_gradient_descent()
 
 if __name__ == '__main__':
 	main()

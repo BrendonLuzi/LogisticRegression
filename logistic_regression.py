@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class LogisticRegression:
 
 	# Default values
-	LEARNING_RATE = 0.1
+	LEARNING_RATE = 0.01
 	EPOCHS = 100000
 	PRECISION = 0.000001
 
@@ -18,10 +19,14 @@ class LogisticRegression:
 		self.train_max = None
 		self.probabilities = None
 		self.predictions = None
+		self.loss_history = {}
 
 	def __sigmoid(self, x):
 		return 1 / (1 + np.exp(-x))
-	
+
+	def __loss(self, y, y_pred):
+		return -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
+
 	def __normalize(self, x, min = None, max = None):
 		# If min and max are not provided, retrieve them from the data
 		if min is None or max is None:
@@ -42,7 +47,7 @@ class LogisticRegression:
 
 			# Initialize the weights randomly and the loss history array
 			self.weights[c] = np.random.rand(x.shape[1])
-			loss = []
+			self.loss_history[c] = []
 
 			# Perform gradient descent until convergence or max epochs
 			for _ in range(self.epochs):
@@ -54,16 +59,16 @@ class LogisticRegression:
 				# Update the weights
 				delta_weight = self.learn_rate * gradient
 				self.weights[c] -= delta_weight
-				# Calculate the loss
-				loss.append(-np.mean(y_bin * np.log(y_pred) + (1 - y_bin) * np.log(1 - y_pred)))
+				# Calculate the loss and store it
+				self.loss_history[c].append(self.__loss(y_bin, y_pred))
 
 				# Check for convergence through the change in loss
-				if len(loss) > 2 and loss[-2] - loss[-1] < self.precision:
+				if len(self.loss_history[c]) > 2 and abs(self.loss_history[c][-2] - self.loss_history[c][-1]) < self.precision:
 					print(f'Converged for class {c} at epoch {_}')
 					break
 			
 			# If the model did not converge, print a warning
-			if len(loss) == self.epochs:
+			if len(self.loss_history[c]) == self.epochs:
 				print(f'Model did not converge for class {c}')
 	
 	def fit(self, x, y):
@@ -101,19 +106,60 @@ class LogisticRegression:
   
 		# Find probability of each class
 		self.probabilities = [self.__sigmoid(np.dot(x, self.weights[c])) for c in self.classes]
-		
 
 		self.predictions = []
-		# For each sample, print its predicted class and the probability of being in that class
+		# For each sample, predict its class and store it
 		for i in range(len(self.probabilities[0])):
-			# Store the predicted class
-			self.predictions.append(self.classes[np.argmax([self.probabilities[j][i] for j in range(len(self.probabilities))])])
-
-		# # Read the truth values from the dataset
-		# truth = pd.read_csv('datasets/dataset_truth.csv')['Hogwarts House'].values
-
-		# # Calculate the accuracy of the model
-		# accuracy = np.mean(self.predictions == truth)
-		# print(f'Accuracy: {accuracy * 100}%')
+			prediction = self.classes[np.argmax([self.probabilities[j][i] for j in range(len(self.probabilities))])]
+			self.predictions.append(prediction)
 
 		return self.predictions
+	
+	def visualize_gradient_descent(self):
+		# Create a subplot for each class and put space between them
+		fig, ax = plt.subplots(len(self.classes), 1, figsize=(10, 8))
+		plt.subplots_adjust(hspace=0.5)
+
+		# Set the labels for each subplot
+		for i, c in enumerate(self.classes):
+			ax[i].set_title(c)
+			ax[i].set_ylabel('Loss')
+		ax[-1].set_xlabel('Epochs')
+
+		# Turn on interactive mode for live plotting
+		plt.ion()
+
+		# Find extremes needed for plotting and choose colors
+		colors = ['red', 'orange', 'blue', 'green']
+		max_epochs = max([len(self.loss_history[c]) for c in self.classes])
+		max_loss = max([max(self.loss_history[c]) for c in self.classes])
+		min_loss = min([min(self.loss_history[c]) for c in self.classes])
+
+		# Create a line for each class
+		lines = {}
+		for i, c in enumerate(self.classes):
+			# Initialize the line with no data
+			lines[i], = ax[i].plot([], [], label=c, color=colors[i])
+			# Set the x and y limits for each subplot
+			ax[i].set_xlim(0, max_epochs)
+			# ax[i].set_ylim(0, max_loss)
+
+			# Set the y-axis to logarithmic scale
+			ax[i].set_ylim(min_loss, max_loss)
+			ax[i].set_yscale('log')
+
+		# Update the plot every 1% of epochs
+		for i in range(0, max_epochs, max_epochs // 100):
+			# Update the data of each line if it exists
+			for j, c in enumerate(self.classes):
+				if i < len(self.loss_history[c]):
+					lines[j].set_xdata(range(i+1))
+					lines[j].set_ydata(self.loss_history[c][:i+1])
+			# Update the plot and pause for a short time
+			plt.draw()
+			plt.pause(0.00001)
+
+		# Turn off interactive mode
+		plt.ioff()
+		# Display the plot and wait for the user to close it
+		plt.show()
