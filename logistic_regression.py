@@ -16,6 +16,8 @@ class LogisticRegression:
 		self.classes = None
 		self.train_min = None
 		self.train_max = None
+		self.probabilities = None
+		self.predictions = None
 
 	def __sigmoid(self, x):
 		return 1 / (1 + np.exp(-x))
@@ -75,6 +77,22 @@ class LogisticRegression:
 		# Train the model
 		self.__gradient_descent(x, y)
 
+	def save_probabilities(self):
+		# Create a log file to display the probabilities
+		with open('extra.log', 'w') as file:
+			# Loop through all the samples
+			for i in range(len(self.probabilities[0])):
+				# Print the sample index and the predicted class
+				print(f'Sample {i}\tis in class {self.predictions[i]}.', end='\t', file = file)
+				# Print the probability of being in each class as ordered rounded percentages
+				print('Probabilities:', end=' ', file = file)
+				# Sort the probabilities in descending order
+				probs = np.argsort(self.probabilities, axis=0)[:, i][::-1]
+				# Print the probabilities in descending order
+				for j in probs:
+					print(f'{self.classes[j]}: {round(self.probabilities[j][i] * 100, 2)}%', end=',\t', file = file)
+				print(file = file)
+
 	def predict(self, x):
 		# Normalize the data according to the training min and max
 		x = self.__normalize(x, self.train_min, self.train_max)
@@ -82,28 +100,20 @@ class LogisticRegression:
 		x = np.insert(x, 0, 1, axis=1)
   
 		# Find probability of each class
-		y_pred = [self.__sigmoid(np.dot(x, self.weights[c])) for c in self.classes]
+		self.probabilities = [self.__sigmoid(np.dot(x, self.weights[c])) for c in self.classes]
 		
 
-		predicted_classes = []
+		self.predictions = []
 		# For each sample, print its predicted class and the probability of being in that class
-		for i in range(len(y_pred[0])):
+		for i in range(len(self.probabilities[0])):
 			# Store the predicted class
-			predicted_classes.append(self.classes[np.argmax([y_pred[j][i] for j in range(len(y_pred))])])
-			print(f'Sample {i} is in class {predicted_classes[-1]}', end=' ')
-			# Print the probability of being in each class as ordered rounded percentages
-			print('with probabilities:', end=' ')
-			# Sort the probabilities in descending order
-			probs = np.argsort(y_pred, axis=0)[:, i][::-1]
-			# Print the probabilities in descending order
-			for j in probs:
-				print(f'{self.classes[j]}: {round(y_pred[j][i] * 100, 2)}%', end=' ')
-			
-			print()
+			self.predictions.append(self.classes[np.argmax([self.probabilities[j][i] for j in range(len(self.probabilities))])])
 
-		# Read the truth values from the dataset
-		truth = pd.read_csv('datasets/dataset_truth.csv')['Hogwarts House'].values
+		# # Read the truth values from the dataset
+		# truth = pd.read_csv('datasets/dataset_truth.csv')['Hogwarts House'].values
 
-		# Calculate the accuracy of the model
-		accuracy = np.mean(predicted_classes == truth)
-		print(f'Accuracy: {accuracy * 100}%')
+		# # Calculate the accuracy of the model
+		# accuracy = np.mean(self.predictions == truth)
+		# print(f'Accuracy: {accuracy * 100}%')
+
+		return self.predictions
