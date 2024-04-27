@@ -18,9 +18,6 @@ def main():
 				'Care of Magical Creatures', 
 				'Charms', 
 				'Flying']
-	
-	# Normalize the data
-	data[features] = (data[features] - data[features].min()) / (data[features].max() - data[features].min())
 
 	# Get the unique house names and define their respective colors
 	houses = data['Hogwarts House'].unique()
